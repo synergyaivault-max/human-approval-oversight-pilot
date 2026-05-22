@@ -1,2 +1,84 @@
 # human-approval-oversight-pilot
 A small, simulated research scaffold testing whether the placement of a human approval step affects how well people catch AI mistakes.
+# Human Oversight Placement — Pilot Study (simulated scaffold)
+
+A small between-subjects study testing whether the **placement of a human
+approval step** (before an AI action, after it, or only passive end-review)
+changes how well people catch errors made by an AI assistant.
+
+Task domain: reviewing small expense/reimbursement entries against a fixed
+6-rule policy. No live model or API is used — AI outputs are pre-written and
+errors are seeded, so scoring is fully objective.
+
+> **STATUS: simulated / demo scaffold. No real participants, no findings yet.**
+> Every CSV and chart in this repo is **synthetic placeholder data** used only to
+> verify that the pipeline runs end to end. The numbers mean nothing about the world.
+> This project is **governance and workflow design plus careful instrument-building** —
+> adjacent to empirical research, not a demonstration of ML or research expertise.
+> See `PROJECT_STATUS.md`. To run it for real, see `CONVERT_TO_REAL_PILOT.md`.
+
+## Execution layer — the survey
+
+The instrument is delivered as three **self-contained HTML survey artifacts** (one per
+condition). Each is a single file that renders identically on mobile, requires no login
+or platform, gates consent + language, presents the locked instrument, and on submit
+**downloads a CSV** matching the analysis contract (with an on-screen copy fallback).
+No data is stored in the browser; the downloaded CSV is the record.
+
+|Survey file                 |Condition            |Per-item response               |Export column(s)|
+|----------------------------|---------------------|--------------------------------|----------------|
+|`oversight_condition_A.html`|Before (pre-approval)|`Approve` / `Reject`            |`Q1..Q20`       |
+|`oversight_condition_B.html`|After (post-review)  |`Looks right` / `Flag as error` |`Q1..Q20`       |
+|`oversight_condition_C.html`|None (passive)       |read-only; end-of-task checklist|`flagged_items` |
+
+Each artifact emits: `Timestamp, Consent, FluentEnglish, <Q1..Q20 or flagged_items>, AttentionCheck`.
+Collected responses flow through the clean/exclusion step into the analysis pipeline below
+with no change to `analysis.py`.
+
+## Files
+
+|File                            |What it is                                                                               |
+|--------------------------------|-----------------------------------------------------------------------------------------|
+|`oversight_condition_A/B/C.html`|The three survey artifacts (execution layer).                                            |
+|`answer_key.csv`                |The 20 items: error vs correct, error type, position. Source of truth for scoring.       |
+|`raw_condition_A.csv`           |**Synthetic.** Before-condition data, columns `Q1..Q20` = `Approve` / `Reject`.          |
+|`raw_condition_B.csv`           |**Synthetic.** After-condition data, columns `Q1..Q20` = `Looks right` / `Flag as error`.|
+|`raw_condition_C.csv`           |**Synthetic.** None-condition data, one column `flagged_items`, e.g. `"3, 8, 12"`.       |
+|`analysis.py`                   |The pipeline: load → anonymise → reshape → join → score → chart. Beginner-commented.     |
+|`data.csv`                      |**Generated, synthetic.** Cleaned long-format data (one row per participant per item).   |
+|`chart_a_catch_rate.png`        |**Generated, synthetic.** Error-catch rate by condition.                                 |
+|`chart_b_false_alarm.png`       |**Generated, synthetic.** False-alarm rate by condition.                                 |
+|`chart_c_decay.png`             |**Generated, synthetic.** First-half vs second-half catch rate.                          |
+|`REPORT_TEMPLATE.md`            |Fill-in 2–4 page report skeleton (methods/limitations pre-drafted).                      |
+|`PROJECT_STATUS.md`             |Read first: simulated/demo status and honest scope.                                      |
+|`CONVERT_TO_REAL_PILOT.md`      |Checklist to turn this scaffold into a real pilot.                                       |
+|`NEXT_STEPS.md`                 |Step-by-step execution checklist + dry-run operational findings.                         |
+|`TECH_REVIEW_PACKET.md`         |Outline of what to hand a reviewer before publishing. 
+
+## How to run (on synthetic data, to see the pipeline work)
+
+**Google Colab:** upload `answer_key.csv` + the three `raw_condition_*.csv`, paste
+`analysis.py` into a cell, run.
+
+**Locally:** `pip install pandas matplotlib`, then `python analysis.py` from this folder.
+
+## Conditions
+
+- **A — Before (pre-approval gate):** nothing is recorded until the person approves each item.
+- **B — After (post-review):** items are shown as already recorded; the person marks each right/wrong.
+- **C — None (passive monitoring):** items are auto-recorded; the person lists any they think are wrong at the end.
+
+## Two scoring outcomes
+
+- **caught** — flagged an item that really was an error (higher = better).
+- **false_alarm** — flagged an item that was actually correct (lower = better).
+
+Both matter: catch rate alone can be gamed by flagging everything, so false-alarm
+rate is what distinguishes real oversight from blanket suspicion.
+
+## Honest scope
+
+Pilot-scale, single task domain, a deliberately high (40%) error rate chosen so
+catch rate is measurable, pre-written outputs rather than a live model, and
+non-expert reviewers. Any future results are preliminary effect *estimates*, not
+general findings. See the limitations section of `REPORT_TEMPLATE.md`.
